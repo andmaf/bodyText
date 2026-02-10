@@ -1,111 +1,120 @@
-/* ==========================================================================
-   Typography guide lines
-   Defines typographic terms and maps them to body landmarks
-   ========================================================================== */
+/**
+ * guides.js — Typography guide lines
+ * Interactive, draggable guide lines rendered on the letter canvas.
+ */
 
 export const TYPO_TERMS = [
-    {
-        id: 'ascender',
-        name: 'Ascender Line',
-        description: 'The highest point reached by lowercase letters like b, d, h, k, l.',
-        color: '#E53935',
-    },
-    {
-        id: 'cap-height',
-        name: 'Cap Height',
-        description: 'The height of a capital letter measured from the baseline.',
-        color: '#FB8C00',
-    },
-    {
-        id: 'x-height',
-        name: 'x-Height',
-        description: 'The height of the lowercase letter x — the core body of lowercase letters.',
-        color: '#43A047',
-    },
-    {
-        id: 'baseline',
-        name: 'Baseline',
-        description: 'The invisible line where letters sit. The foundation of all type.',
-        color: '#1446FF',
-    },
-    {
-        id: 'descender',
-        name: 'Descender Line',
-        description: 'The lowest point reached by letters like g, p, q, y.',
-        color: '#8E24AA',
-    },
+    { id: 'ascender',   name: 'Ascender Line', color: '#E53935' },
+    { id: 'cap-height', name: 'Cap Height',    color: '#FB8C00' },
+    { id: 'x-height',   name: 'x-Height',      color: '#43A047' },
+    { id: 'baseline',   name: 'Baseline',       color: '#1446FF' },
+    { id: 'descender',  name: 'Descender Line', color: '#8E24AA' },
 ];
 
 /**
- * Derive guide-line Y positions from body keypoints.
- * Returns an object keyed by term id → Y pixel value, or null if
- * there aren't enough visible keypoints to compute lines.
+ * Manages draggable typography guide lines on a canvas.
+ * Positions are stored as 0–1 fractions of canvas height.
  */
-export function computeGuideLines(keypoints, canvasHeight) {
-    if (!keypoints || keypoints.length === 0) return null;
+export class GuideLineEditor {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.panel  = canvas.parentElement;
+        this.ctx    = canvas.getContext('2d');
 
-    const kp = {};
-    for (const point of keypoints) {
-        if (point.confidence > 0.3) kp[point.name] = point;
+        // Default Y positions (fraction of canvas height)
+        this.positions = {
+            'ascender':   0.05,
+            'cap-height': 0.12,
+            'x-height':   0.30,
+            'baseline':   0.70,
+            'descender':  0.90,
+        };
+
+        this.dragging = null;
+
+        // Create a DOM label for each guide line
+        this.labels = {};
+        for (const term of TYPO_TERMS) {
+            const el = document.createElement('span');
+            el.className    = 'guide-label';
+            el.dataset.guide = term.id;
+            el.textContent  = term.name;
+            el.style.color  = term.color;
+            this.panel.appendChild(el);
+            this.labels[term.id] = el;
+        }
+
+        this._onMouseDown = this._onMouseDown.bind(this);
+        this._onMouseMove = this._onMouseMove.bind(this);
+        this._onMouseUp   = this._onMouseUp.bind(this);
+
+        this.panel.addEventListener('mousedown', this._onMouseDown);
+        window.addEventListener('mousemove', this._onMouseMove);
+        window.addEventListener('mouseup', this._onMouseUp);
     }
 
-    // Need at minimum: nose, both shoulders, both hips
-    if (!kp.nose || !kp.left_shoulder || !kp.right_shoulder ||
-        !kp.left_hip || !kp.right_hip) {
-        return null;
+    /** Convert clientY to a 0–1 fraction of canvas height. */
+    _toFraction(clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        return Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
     }
 
-    const noseY = kp.nose.y;
-    const shoulderY = (kp.left_shoulder.y + kp.right_shoulder.y) / 2;
-    const hipY = (kp.left_hip.y + kp.right_hip.y) / 2;
-
-    // Estimate head top above nose
-    const noseToShoulder = shoulderY - noseY;
-    const headTopY = noseY - noseToShoulder * 0.6;
-    const foreheadY = noseY - noseToShoulder * 0.3;
-
-    // Use ankles if visible, otherwise estimate from body proportions
-    let ankleY;
-    if (kp.left_ankle && kp.right_ankle) {
-        ankleY = (kp.left_ankle.y + kp.right_ankle.y) / 2;
-    } else {
-        ankleY = hipY + (hipY - noseY) * 1.2;
+    _onMouseDown(e) {
+        const label = e.target.closest('.guide-label');
+        if (!label) return;
+        this.dragging = label.dataset.guide;
+        e.preventDefault();
     }
 
-    return {
-        'ascender': headTopY,
-        'cap-height': foreheadY,
-        'x-height': shoulderY,
-        'baseline': hipY,
-        'descender': Math.min(ankleY, canvasHeight - 20),
-    };
-}
-
-/**
- * Draw horizontal dashed guide lines with labels onto a canvas context.
- */
-export function drawGuides(ctx, guideLines, canvasWidth) {
-    if (!guideLines) return;
-
-    ctx.save();
-    for (const term of TYPO_TERMS) {
-        const y = guideLines[term.id];
-        if (y == null) continue;
-
-        // Dashed line
-        ctx.beginPath();
-        ctx.strokeStyle = term.color;
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([8, 6]);
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvasWidth, y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Label
-        ctx.font = '600 12px -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillStyle = term.color;
-        ctx.fillText(term.name, 12, y - 6);
+    _onMouseMove(e) {
+        if (!this.dragging) return;
+        this.positions[this.dragging] = this._toFraction(e.clientY);
     }
-    ctx.restore();
+
+    _onMouseUp() {
+        this.dragging = null;
+    }
+
+    /** Draw all guide lines and position their DOM labels. */
+    draw() {
+        const ctx = this.ctx;
+        const w   = this.canvas.width;
+        const h   = this.canvas.height;
+
+        const panelRect  = this.panel.getBoundingClientRect();
+        const canvasRect = this.canvas.getBoundingClientRect();
+        const canvasLeft = canvasRect.left - panelRect.left;
+        const canvasTop  = canvasRect.top  - panelRect.top;
+        const cssHeight  = canvasRect.height;
+
+        ctx.save();
+        for (const term of TYPO_TERMS) {
+            const frac = this.positions[term.id];
+            const y    = frac * h;
+
+            // Dashed line across canvas
+            ctx.beginPath();
+            ctx.strokeStyle = term.color;
+            ctx.lineWidth   = 1.5;
+            ctx.setLineDash([8, 6]);
+            ctx.moveTo(0, y);
+            ctx.lineTo(w, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Position DOM label to the left of the canvas
+            const label = this.labels[term.id];
+            label.style.top     = (canvasTop + frac * cssHeight) + 'px';
+            label.style.right   = (panelRect.width - canvasLeft + 8) + 'px';
+            label.style.display = '';
+        }
+        ctx.restore();
+    }
+
+    /** Hide all DOM labels (when guides are toggled off). */
+    hideLabels() {
+        for (const term of TYPO_TERMS) {
+            this.labels[term.id].style.display = 'none';
+        }
+    }
 }

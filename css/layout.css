@@ -1,0 +1,40 @@
+/* ── App Shell ──────────────────────────────────────────────────────────── */
+
+.app {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    height: 100vh;
+}
+
+/* ── Panels ─────────────────────────────────────────────────────────────── */
+
+.panel {
+    position: relative;
+    overflow: hidden;
+}
+
+.panel--camera video {
+    display: none; /* hidden; only used as a source for canvas drawing */
+}
+
+.panel--skeleton {
+    background: var(--color-panel-skeleton);
+}
+
+.panel--letter {
+    background: var(--color-panel-letter);
+}
+
+/* ── Canvas ─────────────────────────────────────────────────────────────── */
+/* Centered horizontally, inset vertically. Width derived from aspect-ratio. */
+
+.panel canvas {
+    display: block;
+    position: absolute;
+    top: var(--canvas-inset);
+    left: 50%;
+    transform: translateX(-50%);
+    height: calc(100% - var(--canvas-inset) * 2);
+    aspect-ratio: var(--glyph-ratio);
+    border: 2px solid var(--color-text);
+}

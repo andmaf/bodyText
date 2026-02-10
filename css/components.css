@@ -1,0 +1,75 @@
+/* ── Control Window ─────────────────────────────────────────────────────── */
+/* Reusable bar beneath each panel's canvas. Absolutely positioned so it   */
+/* stays fixed when the canvas width changes with --glyph-ratio.           */
+
+.control-window {
+    position: absolute;
+    top: calc(100% - var(--canvas-inset) + var(--control-gap));
+    left: var(--panel-padding);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    white-space: nowrap;
+}
+
+/* ── Buttons (inside control windows) ──────────────────────────────────── */
+
+.control-window button {
+    background: var(--color-text);
+    color: var(--color-bg);
+    border: none;
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: 0.8rem;
+}
+
+.control-window button:hover {
+    background: var(--color-selected);
+}
+
+/* ── Ratio Selector ────────────────────────────────────────────────────── */
+
+.ratio-selector {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.control-window .ratio-btn {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-text);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-size: 0.75rem;
+}
+
+.control-window .ratio-btn:hover,
+.control-window .ratio-btn.active {
+    background: var(--color-text);
+    color: var(--color-bg);
+}
+
+/* ── Status Label ──────────────────────────────────────────────────────── */
+
+.status {
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.5;
+}
+
+/* ── Guide Labels (letter panel) ───────────────────────────────────────── */
+
+.guide-label {
+    position: absolute;
+    font: 600 11px var(--font-family);
+    white-space: nowrap;
+    transform: translateY(-50%);
+    cursor: grab;
+    user-select: none;
+}
+
+.guide-label:active {
+    cursor: grabbing;
+}
